@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" id="html" class="scroll-auto scrollbar-hide dark">
   <head>
-
-    <title>Yumi - Proxy</title>
+    <title>Yumi-Proxy</title>
     <!-- ========== Basic Meta Tags ========== -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -441,26 +440,13 @@
     </footer>
 
     <script>
-      // =================================================================================
-      // Konfigurasi Frontend
-      // =================================================================================
       const WORKER_URL = "https://asep.yirijo3075.workers.dev"; // Ganti dengan URL worker Anda
       const SERVICE_NAME = "asep"; // Ganti dengan nama service worker Anda
       const PROXY_PER_PAGE = 8;
 
-      // =================================================================================
-      // Variabel Global & State
-      // =================================================================================
       let fullProxyList = [];
       let currentPage = 0;
 
-      // =================================================================================
-      // Fungsi Utama & Render UI
-      // =================================================================================
-
-      /**
-       * Fungsi utama yang dijalankan saat halaman dimuat.
-       */
       async function main() {
         const urlParams = new URLSearchParams(window.location.search);
         const countryCode = urlParams.get("cc");
@@ -671,10 +657,7 @@
         return link;
       }
 
-      // =================================================================================
       // Fungsi Helper & Event Handler
-      // =================================================================================
-
       function navigateToPage(page) {
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.set("page", page);
@@ -724,42 +707,38 @@
 
         ports.forEach((port) => {
           protocols.forEach((protocol) => {
-            const uri = new URL(
-              `${protocol}://${WORKER_URL.replace(/^https?:\/\//, "")}`
-            );
+            const host = WORKER_URL.replace(/^https?:\/\//, "");
+            const uri = new URL(`${protocol}://${host}`);
             uri.port = port;
 
             uri.searchParams.set("type", "ws");
-            uri.searchParams.set(
-              "host",
-              WORKER_URL.replace(/^https?:\/\//, "")
-            );
+            uri.searchParams.set("host", host);
             uri.searchParams.set(
               "path",
               `/${proxy.proxyIP}-${proxy.proxyPort}`
             );
-            uri.searchParams.set("security", port === 443 ? "tls" : "none");
+            // Logika TLS = SNI
+            const isTls = port === 443;
+            uri.searchParams.set("security", isTls ? "tls" : "none");
+
+            if (isTls) {
+              uri.searchParams.set("sni", host);
+            }
 
             if (protocol === "ss") {
               uri.username = btoa(`none:${uuid}`);
               uri.searchParams.set(
                 "plugin",
-                `v2ray-plugin;tls=${port === 443};mux=0;mode=websocket;path=/${
-                  proxy.proxyIP
-                }-${proxy.proxyPort};host=${WORKER_URL.replace(
-                  /^https?:\/\//,
-                  ""
-                )}`
+                `v2ray-plugin;tls=${isTls};mux=0;mode=websocket;path=/${proxy.proxyIP}-${proxy.proxyPort};host=${host}`
               );
             } else {
               uri.username = uuid;
               if (protocol === "vless") {
                 uri.searchParams.set("encryption", "none");
-                if (port === 80) uri.searchParams.set("sni", "");
               }
             }
 
-            const tls_ntls = port === 443 ? "TLS" : "NTLS";
+            const tls_ntls = isTls ? "TLS" : "NTLS";
             uri.hash = `${proxy.country} ${proxy.org} ${tls_ntls} [${SERVICE_NAME}]`;
 
             configs.push({
@@ -771,7 +750,7 @@
         return configs;
       }
 
-      // PERUBAHAN: Grup fungsi untuk popup pilihan format
+      // Generate Configs
       let rawConfigToCopy = "";
       const CONVERTER_URL = "https://api.foolvpn.me/convert";
 
